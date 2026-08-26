@@ -23,8 +23,8 @@ class MainActivity : Activity() {
     
     private var isDeleting = false
     private var deletedInBatch = 0
-    private val batchLimit = 50 // الحذف دفعة بـ 50 فيديو أمان تام للحساب
-    private val handler = Handler(Looper.getMainLocate() ?: Looper.getMainLooper())
+    private val batchLimit = 50 
+    private val handler = Handler(Looper.getMainLooper())
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,7 +36,6 @@ class MainActivity : Activity() {
         txtStatus = findViewById(R.id.txtStatus)
         controlBar = findViewById(R.id.controlBar)
 
-        // إعدادات المتصفح
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.loadWithOverviewMode = true
@@ -56,23 +55,20 @@ class MainActivity : Activity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // لو المستخدم سجل دخول ووصل لصفحة بروفايلك أو الفيديوهات، نظهر شريط التحكم
                 if (url != null && (url.contains("tiktok.com/@") || url.contains("profile"))) {
                     controlBar.visibility = View.VISIBLE
                 }
             }
         }
 
-        // بدء الدخول لصفحة تيك توك
         webView.loadUrl("https://www.tiktok.com/login")
 
-        // زرار بدء الحذف دفعة 50
         btnBatchDelete.setOnClickListener {
             if (!isDeleting) {
                 isDeleting = true
                 deletedInBatch = 0
                 btnBatchDelete.text = "⏸️ إيقاف مؤقت"
-                Toast.Link(this, "جاري بدء حذف دفعة (50 فيديو)...", Toast.LENGTH_SHORT)
+                Toast.makeText(this, "جاري بدء حذف دفعة (50 فيديو)...", Toast.LENGTH_SHORT).show()
                 startBatchDeletion()
             } else {
                 stopDeletion("تم إيقاف الحذف بواسطة المستخدم.")
@@ -89,10 +85,8 @@ class MainActivity : Activity() {
                 return
             }
 
-            // كود JavaScript دقيق للبحث عن خيار إزالة الريبوست والضغط عليه
             val jsCode = """
                 (function() {
-                    // البحث عن زرار الثلاث نقاط أو المشاركة الخاص بالفيديو الحالي
                     var buttons = document.querySelectorAll('button, div[role="button"]');
                     for (var i = 0; i < buttons.length; i++) {
                         var text = buttons[i].innerText || "";
@@ -102,7 +96,6 @@ class MainActivity : Activity() {
                         }
                     }
                     
-                    // لو زرار القائمة ظاهر ندوس عليه
                     var moreBtn = document.querySelector('[data-e2e="share-icon"], [data-e2e="more-icon"]');
                     if (moreBtn) {
                         moreBtn.click();
@@ -120,7 +113,6 @@ class MainActivity : Activity() {
                 }
             }
 
-            // تكرار الفحص كل 3 ثواني للانتقال للفيديو اللي بعده
             handler.postDelayed(this, 3000)
         }
     }
