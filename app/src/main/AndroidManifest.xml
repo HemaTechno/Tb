@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.hema.repostcleaner">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- صلاحية الإنترنت عشان المتصفح يفتح تيك توك -->
+    <!-- صلاحية الإنترنت لتشغيل المتصفح الداخلي وتصفح تيك توك -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
@@ -22,4 +21,5 @@
         </activity>
 
     </application>
+
 </manifest>
