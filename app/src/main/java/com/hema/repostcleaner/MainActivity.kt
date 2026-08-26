@@ -5,22 +5,26 @@ import android.app.Activity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
 class MainActivity : Activity() {
 
     private lateinit var webView: WebView
-    private lateinit var btnStartCleaning: Button
-    private lateinit var txtCounter: TextView
-    private var isCleaning = false
-    private var deletedCount = 0
-    private val handler = Handler(Looper.getMainLooper())
-    private val maxLimit = 200
+    private lateinit var btnBatchDelete: Button
+    private lateinit var txtStatus: TextView
+    private lateinit var controlBar: LinearLayout
+    
+    private var isDeleting = false
+    private var deletedInBatch = 0
+    private val batchLimit = 50 // الحذف دفعة بـ 50 فيديو أمان تام للحساب
+    private val handler = Handler(Looper.getMainLocate() ?: Looper.getMainLooper())
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,95 +32,107 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         webView = findViewById(R.id.webView)
-        btnStartCleaning = findViewById(R.id.btnStartCleaning)
-        txtCounter = findViewById(R.id.txtCounter)
+        btnBatchDelete = findViewById(R.id.btnBatchDelete)
+        txtStatus = findViewById(R.id.txtStatus)
+        controlBar = findViewById(R.id.controlBar)
 
-        // إعدادات المتصفح الداخلي
+        // إعدادات المتصفح
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.loadWithOverviewMode = true
         webView.settings.useWideViewPort = true
-        
-        // السماح بحفظ ملفات تعريف الارتباط (عشان تسجيل الدخول يفضل محفوظ)
+
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                val url = request?.url.toString()
+                if (url.startsWith("snssdk") || url.startsWith("tiktok://")) {
+                    return true 
+                }
+                return false
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // لو المستخدم فتح صفحة الملف الشخصي أو الريبوستات، نقدر نساعده
+                // لو المستخدم سجل دخول ووصل لصفحة بروفايلك أو الفيديوهات، نظهر شريط التحكم
+                if (url != null && (url.contains("tiktok.com/@") || url.contains("profile"))) {
+                    controlBar.visibility = View.VISIBLE
+                }
             }
         }
 
-        // فتح تيك توك (صفحة تسجيل الدخول أو الملف الشخصي)
+        // بدء الدخول لصفحة تيك توك
         webView.loadUrl("https://www.tiktok.com/login")
 
-        btnStartCleaning.setOnClickListener {
-            if (!isCleaning) {
-                isCleaning = true
-                btnStartCleaning.text = "⏹️ إيقاف التنظيف"
-                btnStartCleaning.setBackgroundColor(0xFF888888.toInt())
-                Toast.makeText(this, "بدء عملية التنظيف بذكاء...", Toast.LENGTH_SHORT).show()
-                startAutoCleaning()
+        // زرار بدء الحذف دفعة 50
+        btnBatchDelete.setOnClickListener {
+            if (!isDeleting) {
+                isDeleting = true
+                deletedInBatch = 0
+                btnBatchDelete.text = "⏸️ إيقاف مؤقت"
+                Toast.Link(this, "جاري بدء حذف دفعة (50 فيديو)...", Toast.LENGTH_SHORT)
+                startBatchDeletion()
             } else {
-                stopCleaning("تم إيقاف التنظيف بواسطة المستخدم.")
+                stopDeletion("تم إيقاف الحذف بواسطة المستخدم.")
             }
         }
     }
 
-    private val cleaningRunnable = object : Runnable {
+    private val deleteRunnable = object : Runnable {
         override fun run() {
-            if (!isCleaning) return
+            if (!isDeleting) return
 
-            if (deletedCount >= maxLimit) {
-                stopCleaning("⚠️ تم الوصول للحد الأقصى اليومي (200 ريبوست) للحفاظ على الحساب.")
+            if (deletedInBatch >= batchLimit) {
+                stopDeletion("✅ تم بنجاح حذف دفعة الـ 50 فيديو! ارتاح شوية واضغط تاني لو حابب.")
                 return
             }
 
-            // حقن كود JavaScript للبحث عن زرار الحذف أو إزالة إعادة النشر في صفحة تيك توك
+            // كود JavaScript دقيق للبحث عن خيار إزالة الريبوست والضغط عليه
             val jsCode = """
                 (function() {
-                    // البحث عن أزرار المشاركة أو الثلاث نقاط أو زر إزالة الريبوست
+                    // البحث عن زرار الثلاث نقاط أو المشاركة الخاص بالفيديو الحالي
                     var buttons = document.querySelectorAll('button, div[role="button"]');
                     for (var i = 0; i < buttons.length; i++) {
                         var text = buttons[i].innerText || "";
                         if (text.includes("Remove repost") || text.includes("إزالة إعادة النشر") || text.includes("حذف")) {
                             buttons[i].click();
-                            return "DELETED";
+                            return "DELETED_ONE";
                         }
                     }
                     
-                    // محاولة الضغط على قائمة الخيارات لو موجودة
-                    var moreOptions = document.querySelector('[data-e2e="share-icon"], [data-e2e="more-icon"]');
-                    if (moreOptions) {
-                        moreOptions.click();
-                        return "CLICKED_MORE";
+                    // لو زرار القائمة ظاهر ندوس عليه
+                    var moreBtn = document.querySelector('[data-e2e="share-icon"], [data-e2e="more-icon"]');
+                    if (moreBtn) {
+                        moreBtn.click();
+                        return "OPENED_MENU";
                     }
                     
-                    return "NOT_FOUND";
+                    return "SEARCHING";
                 })();
             """.trimIndent()
 
             webView.evaluateJavascript(jsCode) { result ->
-                if (result != null && result.contains("DELETED")) {
-                    deletedCount++
-                    txtCounter.text = "الممسوح: $deletedCount / $maxLimit"
+                if (result != null && result.contains("DELETED_ONE")) {
+                    deletedInBatch++
+                    txtStatus.text = "تم حذف: $deletedInBatch / $batchLimit في هذه الدفعة"
                 }
             }
 
-            // تكرار العملية كل 3 ثواني عشان الموقع يلحق يحمل الفيديو اللي بعده
+            // تكرار الفحص كل 3 ثواني للانتقال للفيديو اللي بعده
             handler.postDelayed(this, 3000)
         }
     }
 
-    private fun startAutoCleaning() {
-        handler.post(cleaningRunnable)
+    private fun startBatchDeletion() {
+        handler.post(deleteRunnable)
     }
 
-    private fun stopCleaning(message: String) {
-        isCleaning = false
-        handler.removeCallbacks(cleaningRunnable)
-        btnStartCleaning.text = "🚀 ابدأ التنظيف التلقائي (الحد 200)"
+    private fun stopDeletion(message: String) {
+        isDeleting = false
+        handler.removeCallbacks(deleteRunnable)
+        btnBatchDelete.text = "🗑️ ابدأ حذف دفعة (50 فيديو)"
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 }
