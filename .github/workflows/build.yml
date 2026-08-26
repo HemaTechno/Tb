@@ -23,7 +23,7 @@ jobs:
       uses: gradle/actions/setup-gradle@v4
       with:
         gradle-version: '8.4'
-        cache: 'none'
+        cache-disabled: 'true'
 
     - name: Run Build
       run: gradle assembleDebug
