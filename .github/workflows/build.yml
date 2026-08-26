@@ -27,3 +27,12 @@ jobs:
 
     - name: Run Build
       run: gradle assembleDebug
+
+    - name: Upload APK to Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/heads/')
+      with:
+        files: app/build/outputs/apk/debug/*.apk
+        tag_name: v1.0.0
+        overwrite: true
+        body: "نسخة أداة Hema Repost Cleaner التلقائية لجهازك."
