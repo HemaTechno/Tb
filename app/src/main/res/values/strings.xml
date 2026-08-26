@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Hema Repost Cleaner</string>
+    <string name="accessibility_service_description">أداة Hema Repost Cleaner تحتاج هذه الصلاحية لتقوم بالضغط تلقائياً على زر إزالة إعادة النشر في تيك توك نيابة عنك.</string>
+</resources>
