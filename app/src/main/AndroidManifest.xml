@@ -2,18 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.hema.repostcleaner">
 
-    <!-- طلب صلاحية إمكانية الوصول -->
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_app_icon"
         android:label="Hema Repost Cleaner"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+        android:theme="@style/Theme.HemaCleaner">
         
-        <!-- الواجهة الرئيسية للتطبيق (اللي فيها زرار التشغيل) -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -23,7 +20,6 @@
             </intent-filter>
         </activity>
 
-        <!-- خدمة الحذف (اللي هتشتغل في الخلفية) -->
         <service
             android:name=".RepostCleanerService"
             android:exported="true"
